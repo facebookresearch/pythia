@@ -9,8 +9,8 @@ import torch
 from mmf.common.registry import registry
 from mmf.common.report import Report
 from mmf.common.sample import to_device
-from mmf.utils.general import clip_gradients, get_max_updates
-from torch import Tensor
+from mmf.utils.flow import extract_loss, get_max_updates
+from mmf.utils.general import clip_gradients
 
 
 logger = logging.getLogger(__name__)
@@ -150,24 +150,20 @@ class TrainerTrainingLoopMixin(ABC):
                     if stop is True:
                         logger.info("Early stopping activated")
                         should_break = True
+
                 if self.num_updates >= self.max_updates:
                     should_break = True
 
                 if should_break:
                     break
 
-    def run_training_batch(self, batch: Tensor, loss_divisor: int) -> None:
+    def run_training_batch(self, batch: torch.Tensor, loss_divisor: int) -> None:
         report = self._forward(batch)
-        # Since losses are batch averaged in MMF, this makes sure the
-        # scaling is right.
-        for key, value in report.losses.items():
-            value = value.mean() / loss_divisor
-            report.losses[key] = value
-        loss = self._extract_loss(report)
+        loss = extract_loss(report, loss_divisor)
         self._backward(loss)
         return report
 
-    def _forward(self, batch: Tensor) -> Dict[str, Any]:
+    def _forward(self, batch: torch.Tensor) -> Dict[str, Any]:
         prepared_batch = self.dataset_loader.prepare_batch(batch)
         # Move the sample list to device if it isn't as of now.
         prepared_batch = to_device(prepared_batch, torch.device("cuda"))
@@ -186,7 +182,7 @@ class TrainerTrainingLoopMixin(ABC):
         self.on_update_start()
         self.optimizer.zero_grad()
 
-    def _backward(self, loss: Tensor) -> None:
+    def _backward(self, loss: torch.Tensor) -> None:
         self.scaler.scale(loss).backward()
         self.profile("Backward time")
 
@@ -204,16 +200,6 @@ class TrainerTrainingLoopMixin(ABC):
         self.scaler.update()
         self.num_updates += 1
         self.profile("Finished update")
-
-    def _extract_loss(self, report: Dict[str, Any]) -> Tensor:
-        loss_dict = report.losses
-        assert len(loss_dict) != 0, (
-            "Model returned an empty loss dict. "
-            "Did you forget to (i) define losses in your model configuration or"
-            "(ii) return losses dict from your model?"
-        )
-        loss = sum([loss.mean() for loss in loss_dict.values()])
-        return loss
 
     def _calculate_max_updates(self):
         config_max_updates = self.training_config.max_updates

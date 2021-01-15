@@ -6,6 +6,7 @@ import json
 import logging
 import os
 import sys
+import time
 from typing import Any, Dict, Union
 
 from mmf.common.registry import registry
@@ -202,6 +203,55 @@ def _find_caller():
                 mod_name = "mmf"
             return mod_name, (code.co_filename, frame.f_lineno, code.co_name)
         frame = frame.f_back
+
+
+def summarize_report(
+    current_iteration,
+    num_updates,
+    max_updates,
+    meter,
+    should_print=True,
+    extra=None,
+    tb_writer=None,
+):
+    if extra is None:
+        extra = {}
+    if not is_master():
+        return
+
+    if tb_writer:
+        scalar_dict = meter.get_scalar_dict()
+        tb_writer.add_scalars(scalar_dict, current_iteration)
+
+    if not should_print:
+        return
+    log_dict = {}
+    if num_updates and max_updates:
+        log_dict.update({"progress": f"{num_updates}/{max_updates}"})
+    log_dict.update(meter.get_log_dict())
+    log_dict.update(extra)
+
+    log_progress(log_dict)
+
+
+def calculate_time_left(
+    max_updates,
+    num_updates,
+    timer,
+    num_snapshot_iterations,
+    log_interval,
+    eval_interval,
+):
+    time_taken_for_log = time.time() * 1000 - timer.start
+    iterations_left = max_updates - num_updates
+    num_logs_left = iterations_left / log_interval
+    time_left = num_logs_left * time_taken_for_log
+
+    snapshot_iteration = num_snapshot_iterations / log_interval
+    snapshot_iteration *= iterations_left / eval_interval
+    time_left += snapshot_iteration * time_taken_for_log
+
+    return timer.get_time_hhmmss(gap=time_left)
 
 
 def log_progress(info: Union[Dict, Any], log_format="simple"):

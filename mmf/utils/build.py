@@ -246,6 +246,18 @@ def build_optimizer(model, config):
         optimizer = optimizer_class(parameters, **params)
     return optimizer
 
+def build_lightning_optimizers(model, config):
+    optimizer = build_optimizer(model, config)
+
+    if config.training.lr_scheduler:
+        lr_scheduler = build_scheduler(optimizer, config)
+        return {
+            "optimizer": optimizer,
+            "lr_scheduler": {"scheduler": lr_scheduler, "interval": "step"},
+        }
+    else:
+        return optimizer
+
 
 def build_lightning_optimizers(model, config):
     optimizer = build_optimizer(model, config)
