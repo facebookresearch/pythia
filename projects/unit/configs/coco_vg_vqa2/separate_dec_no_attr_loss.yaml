@@ -1,0 +1,9 @@
+includes:
+- ./separate_dec.yaml
+
+model_config:
+  unit:
+    datasets:
+      detection:
+        detection_visual_genome:
+          use_attr: false

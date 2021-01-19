@@ -1,0 +1,10 @@
+includes:
+- ./shared_dec.yaml
+
+model_config:
+  unit:
+    detr_args:
+      share_decoders: false
+
+optimizer:
+  type: adam_w  # HuggingFace transformer's AdamW

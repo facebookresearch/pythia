@@ -1,5 +1,6 @@
 # Copyright (c) Facebook, Inc. and its affiliates.
 import logging
+import os
 
 import torch
 import tqdm
@@ -27,8 +28,16 @@ class VQA2Dataset(MMFDataset):
 
     def init_processors(self):
         super().init_processors()
-        if not self._use_features:
+        self.load_detr_img = hasattr(self, "detr_image_processor")
+        if not self._use_features and not self.load_detr_img:
             self.image_db.transform = self.image_processor
+
+        # DETR image needs to be handled specially, as the images may have different
+        # sizes and are collated with NestedTensor
+        if self.load_detr_img:
+            self.image_dir = self._get_path_based_on_index(
+                self.config, "images", self._index
+            )
 
     def try_fast_read(self):
         # Don't fast read in case of test set.
@@ -93,6 +102,13 @@ class VQA2Dataset(MMFDataset):
                     features["image_info_0"]
                 )
             current_sample.update(features)
+        elif self.load_detr_img:
+            image_path = os.path.join(
+                self.image_dir, sample_info["image_name"] + ".jpg"
+            )
+            current_sample.detr_img = self.detr_image_processor(
+                {"image_path": image_path}
+            )["detr_img"]
         else:
             image_path = sample_info["image_name"] + ".jpg"
             current_sample.image = self.image_db.from_path(image_path)["images"][0]

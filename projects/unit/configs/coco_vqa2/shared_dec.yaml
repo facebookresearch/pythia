@@ -1,0 +1,106 @@
+model_config:
+  unit:
+    detr_args:
+      num_queries:
+        detection:
+          detection_coco: 100
+        vl:
+          vqa2: 25
+      share_decoders: true
+      decoder_hidden_dim: 768
+      dilation: true
+      use_task_embedding_in_encoder: true
+      use_task_embedding_in_lang_encoder: true
+    bert_config:
+      bert_model_name: bert-base-uncased
+    losses:
+    - logit_bce
+    # initialize the ResNet convnet backbone from DETR
+    detr_ckpt_path: https://dl.fbaipublicfiles.com/detr/detr-r50-dc5-f0fb7ef5.pth
+    detr_ckpt_load_backbone_only: true
+
+dataset_config:
+  vqa2:
+    return_features_info: true
+    use_features: false
+    use_images: true
+    processors:
+      text_processor:
+        type: bert_tokenizer
+        params:
+          tokenizer_config:
+            type: bert-base-uncased
+            params:
+              do_lower_case: true
+          mask_probability: 0
+          max_seq_length: 25
+      detr_image_processor:
+        type: detr_image
+        params:
+          image_size: 800
+          max_size: 1333
+    images:
+      train:
+      - coco/defaults/images/trainval2014
+      - coco/defaults/images/trainval2014
+      - coco/defaults/images/trainval2014
+      val:
+      - coco/defaults/images/trainval2014
+      test:
+      - coco/defaults/images/test2015
+    annotations:
+      train:
+      - vqa2/defaults/annotations/imdb_train2017.npy
+      - vqa2/defaults/annotations/imdb_vg_karpathytrain_not_in_val2017.npy
+      - vqa2/defaults/annotations/imdb_vg_karpathytest_not_in_val2017.npy
+      val:
+      - vqa2/defaults/annotations/imdb_val2017.npy
+      test:
+      - vqa2/defaults/annotations/imdb_test2015.npy
+
+evaluation:
+  metrics:
+  - type: vqa_accuracy
+    datasets:
+    - vqa2
+  - type: detection_mean_ap
+    key: detection_mean_ap
+    datasets:
+    - detection_coco
+    params:
+      dataset_json_files:
+        detection_coco:
+          val: ${env.data_dir}/datasets/coco/detection/annotations/instances_val2017.json
+
+optimizer:
+  type: adam_w_skip_params_with_zero_grad  # skip update on unused params in a batch
+  params:
+    lr: 5e-5
+    eps: 1e-8
+    weight_decay: 1e-4
+
+scheduler:
+  type: warmup_cosine
+  params:
+    num_warmup_steps: 2000
+    num_training_steps: ${training.max_updates}
+
+training:
+  num_workers: 2
+  # these are mostly the same as in COCO detection training
+  clip_norm_mode: all
+  clip_gradients: true
+  max_grad_l2_norm: 0.1
+  lr_scheduler: true
+  lr_ratio: 0.1
+  batch_size: 64
+  max_updates: 300000
+  checkpoint_interval: 10000
+  evaluation_interval: 10000
+  dataset_size_proportional_sampling: false
+  early_stop:
+    enabled: false
+    criteria: vqa2/vqa_accuracy
+    minimize: false
+  stdout_capture: false
+  find_unused_parameters: true

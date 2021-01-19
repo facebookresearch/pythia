@@ -1,0 +1,196 @@
+model_config:
+  unit:
+    detr_args:
+      num_queries:
+        detection:
+          detection_coco: 100
+          detection_visual_genome: 100
+        vl:
+          vqa2: 25
+          # hateful_memes: 25
+          visual_entailment: 25
+        glue:
+          glue_qnli: 25
+          glue_qqp: 25
+          glue_sst2: 25
+          glue_mnli_mismatched: 25
+      share_decoders: true
+      decoder_hidden_dim: 768
+      dilation: true
+      use_task_embedding_in_encoder: true
+      use_task_embedding_in_lang_encoder: true
+    bert_config:
+      bert_model_name: bert-base-uncased
+    losses:
+    - logit_bce
+    # initialize the ResNet convnet backbone from DETR
+    detr_ckpt_path: https://dl.fbaipublicfiles.com/detr/detr-r50-dc5-f0fb7ef5.pth
+    detr_ckpt_load_backbone_only: true
+
+dataset_config:
+  vqa2:
+    return_features_info: true
+    use_features: false
+    use_images: true
+    processors:
+      text_processor:
+        type: bert_tokenizer
+        params:
+          tokenizer_config:
+            type: bert-base-uncased
+            params:
+              do_lower_case: true
+          mask_probability: 0
+          max_seq_length: 25
+      detr_image_processor:
+        type: detr_image
+        params:
+          image_size: 800
+          max_size: 1333
+    images:
+      train:
+      - coco/defaults/images/trainval2014
+      - coco/defaults/images/trainval2014
+      - coco/defaults/images/trainval2014
+      val:
+      - coco/defaults/images/trainval2014
+      test:
+      - coco/defaults/images/test2015
+    annotations:
+      train:
+      - vqa2/defaults/annotations/imdb_train2017.npy
+      - vqa2/defaults/annotations/imdb_vg_karpathytrain_not_in_val2017.npy
+      - vqa2/defaults/annotations/imdb_vg_karpathytest_not_in_val2017.npy
+      val:
+      - vqa2/defaults/annotations/imdb_val2017.npy
+      test:
+      - vqa2/defaults/annotations/imdb_test2015.npy
+  # hateful_memes:
+  #   use_features: false
+  #   use_images: true
+  #   zoo_requirements: []
+  #   annotations:
+  #     train:
+  #     - /private/home/dkiela/data/datasets/hm-final-unseen/train.jsonl
+  #     val:
+  #     - /private/home/dkiela/data/datasets/hm-final-unseen/dev.jsonl
+  #     test:
+  #     - /private/home/dkiela/data/datasets/hm-final-unseen/test.jsonl
+  #   images:
+  #     train:
+  #     - /private/home/dkiela/data/datasets/hm-final-unseen
+  #     val:
+  #     - /private/home/dkiela/data/datasets/hm-final-unseen
+  #     test:
+  #     - /private/home/dkiela/data/datasets/hm-final-unseen
+  #   processors:
+  #     detr_image_processor:
+  #       type: detr_image
+  #       params:
+  #         image_size: 224
+  #         max_size: 224
+  visual_entailment:
+    use_features: False
+    zoo_requirements: []
+    annotations:
+      train:
+      - /private/home/asg/data/visual_entailment/defaults/annotations/snli_ve_train.jsonl
+      val:
+      - /private/home/asg/data/visual_entailment/defaults/annotations/snli_ve_dev.jsonl
+      test:
+      - /private/home/asg/data/visual_entailment/defaults/annotations/snli_ve_test.jsonl
+    images:
+      train:
+      - /private/home/asg/data/visual_entailment/defaults/images/flickr30k_images
+      val:
+      - /private/home/asg/data/visual_entailment/defaults/images/flickr30k_images
+      test:
+      - /private/home/asg/data/visual_entailment/defaults/images/flickr30k_images
+    processors:
+      detr_image_processor:
+        type: detr_image
+        params:
+          image_size: 800
+          max_size: 1333
+      text_processor:
+        type: bert_tokenizer
+        params:
+          tokenizer_config:
+            type: bert-base-uncased
+            params:
+              do_lower_case: true
+          mask_probability: 0
+          max_seq_length: 25
+
+evaluation:
+  metrics:
+  - type: vqa_accuracy
+    datasets:
+    - vqa2
+  - type: detection_mean_ap
+    key: detection_mean_ap
+    datasets:
+    - detection_coco
+    - detection_visual_genome
+    params:
+      dataset_json_files:
+        detection_coco:
+          val: ${env.data_dir}/datasets/coco/detection/annotations/instances_val2017.json
+        detection_visual_genome:
+          val: ${env.data_dir}/datasets/visual_genome/detection/annotations/instances_val_split_wrt_coco2017.json
+  - type: accuracy
+    key: accuracy
+    datasets:
+    - visual_entailment
+    - glue_qnli
+    - glue_qqp
+    - glue_sst2
+    - glue_mnli_mismatched
+
+optimizer:
+  type: adam_w  # HuggingFace transformer's AdamW
+  params:
+    lr: 5e-5
+    eps: 1e-8
+    weight_decay: 1e-4
+
+scheduler:
+  type: warmup_cosine
+  params:
+    num_warmup_steps: 2000
+    num_training_steps: ${training.max_updates}
+
+training:
+  num_workers: 2
+  # these are mostly the same as in COCO detection training
+  clip_norm_mode: all
+  clip_gradients: true
+  max_grad_l2_norm: 0.1
+  lr_scheduler: true
+  lr_ratio: 0.1
+  batch_size: 64
+  max_updates: 500000
+  checkpoint_interval: 10000
+  evaluation_interval: 10000
+  dataset_size_proportional_sampling: false
+  early_stop:
+    enabled: false
+    criteria: vqa2/vqa_accuracy
+    minimize: false
+  stdout_capture: false
+  find_unused_parameters: true
+
+multitasking:
+  enabled: true
+  sampling_ratios:
+    detection_coco: 0.2
+    detection_visual_genome: 0.07
+    visual_entailment: 0.12
+    vqa2: 0.26
+    glue_qnli: 0.1
+    glue_mnli_mismatched: 0.1
+    glue_qqp: 0.1
+    glue_sst2: 0.05
+
+checkpoint:
+  max_to_keep: 5

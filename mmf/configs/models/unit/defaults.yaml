@@ -1,0 +1,105 @@
+model_config:
+  unit:
+    detr_ckpt_path: ''  # the initial DETR parameters to start from (this should be a checkpoint file trained w/ DETR package)
+    detr_ckpt_load_backbone_only: false
+    detection_loss_weight: 1.
+
+    keep_only_bert_cls:
+      # whether to keep only the [CLS] token's hidden states in transformer
+      vl:
+        vqa2: false
+        hateful_memes: true
+        visual_entailment: true
+      glue:
+        glue_qnli: true
+        glue_sst2: true
+        glue_mnli_mismatched: true
+        glue_qqp: true
+
+    loss_on_all_hs:
+      vl:
+        vqa2: false
+        hateful_memes: false
+        visual_entailment: false
+      glue:
+        glue_qnli: false
+        glue_sst2: false
+        glue_mnli_mismatched: false
+        glue_qqp: false
+
+    detr_args:
+      lr_backbone: 1e-5
+      backbone: resnet50
+      dilation: false
+      position_embedding: sine
+      enc_layers: 6
+      dec_layers: 6
+      dim_feedforward: 2048
+      encoder_hidden_dim: 256
+      dropout: 0.1
+      nheads: 8
+      # Override the config
+      pre_norm: false
+      pass_pos_and_query: true
+      # detection losses
+      mask_model: none
+      masks: false
+      aux_loss: true
+      set_loss: hungarian
+      use_bcl: false
+      set_cost_class: 1.
+      set_cost_bbox: 5.
+      set_cost_giou: 2.
+      mask_loss_coef: 1.
+      dice_loss_coef: 1.
+      bbox_loss_coef: 5.
+      giou_loss_coef: 2.
+      attr_loss_coef: 1.
+      eos_coef: 0.1
+      # separate dimensionality for decoder
+      decoder_hidden_dim: 256
+      num_queries: {}
+      share_decoders: false
+      residual_in_encoder: true
+      use_task_embedding_in_encoder: false
+      use_task_embedding_in_decoder: false
+      use_task_embedding_in_lang_encoder: false
+
+    datasets:
+      detection:
+        detection_coco:
+          task_idx: 0
+          num_classes: 91
+          use_attr: false
+        detection_visual_genome:
+          task_idx: 1
+          num_classes: 1601
+          use_attr: true
+        detection_lvis:
+          task_idx: 2
+          num_classes: 1235
+          use_attr: false
+      vl:
+        vqa2:
+          task_idx: 3
+          num_labels: 3129
+        hateful_memes:
+          task_idx: 4
+          num_labels: 2
+        visual_entailment:
+          task_idx: 9
+          num_labels: 3
+      glue:
+        glue_qnli:
+          task_idx: 5
+          num_labels: 2
+        glue_mnli_mismatched:
+          task_idx: 6
+          num_labels: 3
+        glue_sst2:
+          task_idx: 7
+          num_labels: 2
+        glue_qqp:
+          task_idx: 8
+          num_labels: 2
+    max_task_num: 256

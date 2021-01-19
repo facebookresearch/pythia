@@ -1,5 +1,6 @@
 import copy
 import json
+import os
 
 import torch
 from mmf.common.sample import Sample
@@ -45,4 +46,13 @@ class VisualEntailmentDataset(VQA2Dataset):
         label = LABEL_TO_INT_MAPPING[sample_info["gold_label"]]
         current_sample.targets = torch.tensor(label, dtype=torch.long)
 
+        if self.load_detr_img:
+            image_path = os.path.join(self.image_dir, sample_info["Flikr30kID"])
+            current_sample.detr_img = self.detr_image_processor(
+                {"image_path": image_path}
+            )["detr_img"]
+
         return current_sample
+
+    def format_for_prediction(self, report):
+        return []
