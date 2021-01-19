@@ -8,7 +8,12 @@ from mmf.common.batch_collator import BatchCollator
 from mmf.common.registry import registry
 from mmf.utils.build import build_dataloader_and_sampler
 from mmf.utils.configuration import get_mmf_env
-from mmf.utils.distributed import gather_tensor, is_dist_initialized, is_master
+from mmf.utils.distributed import (
+    gather_tensor,
+    gather_tensor_along_batch,
+    is_dist_initialized,
+    is_master,
+)
 from mmf.utils.file_io import PathManager
 from mmf.utils.general import (
     ckpt_name_from_core_args,
@@ -134,6 +139,12 @@ class TestReporter(Dataset):
         keys = ["id", "question_id", "image_id", "context_tokens", "captions", "scores"]
         for key in keys:
             report = self.reshape_and_gather(report, key)
+
+        # gather detection output keys
+        if hasattr(report, "pred_boxes"):
+            report.pred_boxes = gather_tensor_along_batch(report.pred_boxes)
+            report.pred_logits = gather_tensor_along_batch(report.pred_logits)
+            report.orig_size = gather_tensor_along_batch(report.orig_size)
 
         if master_only and not is_master():
             return

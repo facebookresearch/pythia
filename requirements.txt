@@ -15,3 +15,4 @@ omegaconf==2.0.1rc4
 lmdb==0.98
 termcolor==1.1.0
 datasets==1.2.1
+pycocotools==2.0.2

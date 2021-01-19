@@ -110,6 +110,23 @@ def gather_tensor(tensor):
     return tensor_list
 
 
+def gather_tensor_along_batch(tensor, dim=0):
+    world_size = get_world_size()
+
+    if world_size < 2:
+        return tensor
+
+    with torch.no_grad():
+        tensor_list = []
+
+        for _ in range(world_size):
+            tensor_list.append(torch.zeros_like(tensor))
+
+        dist.all_gather(tensor_list, tensor)
+        tensor_list = torch.cat(tensor_list, dim=dim)
+    return tensor_list
+
+
 def reduce_dict(dictionary):
     world_size = get_world_size()
     if world_size < 2:

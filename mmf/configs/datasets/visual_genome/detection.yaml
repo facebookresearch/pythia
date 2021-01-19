@@ -1,0 +1,18 @@
+dataset_config:
+  detection_visual_genome:
+    data_dir: ${env.data_dir}/datasets
+    images:
+      train: 
+      - /datasets01/VisualGenome1.2/061517/VG_100K_all/
+      val:
+      - /datasets01/VisualGenome1.2/061517/VG_100K_all/
+      test:
+      - /datasets01/VisualGenome1.2/061517/VG_100K_all/
+    annotations:
+      train:
+      - visual_genome/detection/annotations/instances_train_split_wrt_coco2017.json
+      val:
+      - visual_genome/detection/annotations/instances_val_split_wrt_coco2017.json
+      test:
+      - visual_genome/detection/annotations/instances_val_split_wrt_coco2017.json
+    load_attributes: true  # Visual Genome has attribute annotations

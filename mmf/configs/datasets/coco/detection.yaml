@@ -1,0 +1,18 @@
+dataset_config:
+  detection_coco:
+    data_dir: ${env.data_dir}/datasets
+    images:
+      train: 
+      - /datasets01/COCO/022719/train2017
+      val:
+      - /datasets01/COCO/022719/val2017
+      test:
+      - /datasets01/COCO/022719/test2017
+    annotations:
+      train:
+      - coco/detection/annotations/instances_train2017.json
+      val:
+      - coco/detection/annotations/instances_val2017.json
+      test:
+      - coco/detection/annotations/image_info_test-dev2017.json
+    load_attributes: false  # COCO has no attribute annotations
